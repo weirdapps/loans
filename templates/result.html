@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Effective Rate Calculator</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
+
+      .container {
+        max-width: 400px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+
+      h1 {
+        text-align: center;
+      }
+
+      .result-label {
+        display: block;
+        text-align: center;
+        font-size: 24px;
+        padding: 20px;
+        margin: 0 auto;
+      }
+
+      .result-container {
+        text-align: center;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Effective Rate Calculator</h1>
+      <div>
+        <label class="result-label"
+          >Effective Rate (after deducting partner's commission):
+        </label>
+        <label class="result-label">
+          <span>{{ annual_rate|round(2) }}%</span>
+        </label>
+      </div>
+    </div>
+  </body>
+</html>

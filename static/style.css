@@ -1,0 +1,49 @@
+.container {
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+  }
+  
+  h1 {
+    text-align: center;
+  }
+  
+  form {
+    margin-top: 20px;
+  }
+  
+  label {
+    display: block;
+    margin-bottom: 5px;
+  }
+  
+  input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+  }
+  
+  button[type="submit"] {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-top: 20px;
+    border-radius: 5px;
+    background-color: #428bca;
+    color: #fff;
+    border: none;
+  }
+  
+  .result {
+    margin-top: 20px;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #d3d3d3;
+    font-weight: bold;
+    text-align: center;
+  }
+  
