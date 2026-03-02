@@ -1,3 +1,5 @@
+MAX_ITERATIONS = 1_000_000
+
 loan_amount = float(input("Enter the loan amount: $"))
 duration = int(input("Enter the loan duration (in months): "))
 annual_interest_rate = float(
@@ -19,8 +21,13 @@ monthly_payment_after_commission = monthly_payment - commission / duration
 # Estimate the remaining rate after commissions using an iterative approach
 remaining_balance = loan_amount  # Initializing the remaining balance
 annual_rate_guess = 0.25  # Initial guess for the annual rate
+iterations = 0
 
 while remaining_balance > 0.10:
+    iterations += 1
+    if iterations > MAX_ITERATIONS:
+        print("Error: Calculation did not converge. Please check your inputs.")
+        raise SystemExit(1)
     remaining_balance = loan_amount
     annual_rate_guess -= 0.0001
     monthly_rate_guess = (1 + annual_rate_guess) ** (1 / 12) - 1
