@@ -4,6 +4,16 @@ from flask import Flask, render_template, request
 
 app = Flask(__name__)
 
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    return response
+
+
 MAX_ITERATIONS = 1_000_000
 
 
