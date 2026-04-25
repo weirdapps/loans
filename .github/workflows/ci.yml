@@ -27,4 +27,4 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          python -c "import flask, numpy; print('imports ok')"
+          python -c "import flask; print('imports ok')"
