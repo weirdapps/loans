@@ -2,3 +2,8 @@ version: 2
 # No active ecosystems: this repo has no GitHub Actions workflows and no
 # requirements.txt yet. Re-enable an ecosystem when one of those is added.
 updates: []
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
