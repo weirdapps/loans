@@ -32,7 +32,13 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          pytest --cov=. --cov-report=xml --cov-report=term-missing
+          pytest --cov=. --cov-report=xml --cov-report=term-missing || exit_code=$?
+          if [ "${exit_code:-0}" -eq 5 ]; then
+            echo "No tests collected — skipping"
+            exit 0
+          else
+            exit ${exit_code:-0}
+          fi
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v3
