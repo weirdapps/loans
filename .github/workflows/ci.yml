@@ -28,3 +28,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           python -c "import flask; print('imports ok')"
+
+      - name: Lint
+        run: |
+          pip install ruff
+          ruff check .
+
+      - name: Test
+        run: |
+          pip install pytest pytest-cov
+          pytest
