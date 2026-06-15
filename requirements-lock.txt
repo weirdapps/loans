@@ -12,7 +12,7 @@ markupsafe==3.0.3
 packaging==26.2
 pluggy==1.6.0
 pygments==2.20.0
-pytest==9.0.3
+pytest==9.1.0
 pytest-cov==7.1.0
-ruff==0.15.16
+ruff==0.15.17
 werkzeug==3.1.8
