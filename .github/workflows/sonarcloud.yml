@@ -12,6 +12,13 @@ jobs:
   sonarcloud:
     name: SonarCloud
     runs-on: ubuntu-latest
+    # Dependabot PRs run without access to repo Actions secrets, so SONAR_TOKEN
+    # is empty and the scan fails auth (exit 3) — a false red, not a gate failure.
+    # Skip the scan on those PRs; the authoritative gate still runs on push to
+    # main/master and on all human-authored PRs (where the token is available).
+    if: >-
+      github.actor != 'dependabot[bot]' &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
 
     steps:
       - name: Checkout code
