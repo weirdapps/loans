@@ -1,6 +1,6 @@
 # loans
 
-Effective-rate calculator for consumer loans that carry a one-off broker commission on top of the headline interest rate.
+Solver for the compound-annual rate equivalent to a nominal Greek consumer loan whose monthly outlay is reduced by a one-off partner commission spread evenly across the term.
 
 [![CI](https://github.com/weirdapps/loans/actions/workflows/ci.yml/badge.svg)](https://github.com/weirdapps/loans/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/weirdapps/loans/actions/workflows/codeql.yml/badge.svg)](https://github.com/weirdapps/loans/actions/workflows/codeql.yml)
@@ -11,18 +11,18 @@ Effective-rate calculator for consumer loans that carry a one-off broker commiss
 
 ## What it does
 
-Greek consumer-loan offers are frequently quoted as "X% interest" while burying a one-off partner (broker) commission of 1 to 3 percent of principal. That fee is deducted from the disbursement but you still amortise the full nominal amount at the headline rate, so the true annual cost is higher than advertised.
+Greek consumer-loan offers are often quoted as a headline annual interest rate with a separate one-off partner (broker) commission of 1 to 3 percent of principal. This project models the scenario where that commission is netted against the monthly instalment (spread evenly across the term), then solves for the compound annual rate at which the full nominal principal would amortise to that reduced instalment.
 
-This project gives you two ways to compute the real effective annual rate:
+The four inputs (loan amount, duration in months, headline annual interest rate, partner commission rate) drive both entry points:
 
 - A Flask web UI (`app.py`) with a four-field form.
-- A prompt-based Python script (`cli.py`) for the same math in the terminal.
+- A prompt-based Python script (`cli.py`) with the same math in the terminal.
 
-Both entry points take the same four inputs (loan amount, duration in months, annual interest rate, partner commission rate) and return the effective annual rate net of the commission.
+The headline rate is a nominal simple rate divided by 12 for the monthly period; the reported effective rate is the annual equivalent of a compound monthly rate. With a non-zero commission the reported effective rate is lower than the headline; with a zero commission the two rates match up to the solver's step size.
 
 ## Requirements
 
-- Python 3.11 or newer (CI runs on 3.12).
+- Python 3.11 or newer. CI runs on 3.12; SonarCloud on 3.11.
 - [uv](https://github.com/astral-sh/uv) for dependency management. The lockfile is committed.
 
 The single runtime dependency is Flask 3.1 or newer, declared in [`pyproject.toml`](pyproject.toml).
@@ -56,7 +56,7 @@ Open [http://localhost:5000](http://localhost:5000). The form asks for:
 | Annual Interest Rate (%) | number |
 | Partner's Commission Rate (%) | number |
 
-Submitting posts to `/calculate`, which validates the inputs and re-renders the form on error, or renders `result.html` with the effective rate rounded to two decimals otherwise. Every response carries the following headers:
+Submitting posts to `/calculate`, which validates the inputs and re-renders the form on error, or renders `result.html` with the effective rate rounded to two decimals otherwise. Every response carries these headers:
 
 ```http
 X-Content-Type-Options: nosniff
@@ -77,30 +77,34 @@ FLASK_DEBUG=true uv run python app.py
 uv run python cli.py
 ```
 
-The script prompts for the four inputs interactively (there are no flags):
+The script prompts for the four inputs interactively (there are no flags). Verified sample run:
 
 ```text
 Enter the loan amount: $25000
 Enter the loan duration (in months): 60
 Enter the annual interest rate (in percentage): 8.5
 Enter the partner's commission rate (in percentage): 2
-Annual Rate (after deducting partner's commission): 9.34%
+Annual Rate (after deducting partner's commission): 8.09%
 ```
+
+On non-convergence the CLI prints an error and exits with status 1; the web UI re-renders the form with an error message.
 
 ## How it works
 
 The math is identical in `app.py` and `cli.py`:
 
 1. Compute the partner commission as `loan_amount * partner_rate / 100`.
-2. Compute the standard monthly payment on the full loan amount at the headline monthly rate using the annuity formula.
-3. Subtract the commission spread evenly across the term from that monthly payment. This is the effective monthly outlay against the reduced disbursement.
-4. Search for the annual rate that fully amortises the loan at the reduced payment. Starting from an initial guess of 0.25 (25 percent), the solver decrements the guess by 0.0001 each pass, converts it to a monthly rate, and simulates the full payment schedule. When the residual balance drops below 0.10, the current guess is returned as the effective annual rate.
+2. Compute the standard monthly payment on the full loan amount at the headline monthly rate (headline annual rate divided by 12, then divided by 100) using the annuity formula.
+3. Subtract `commission / duration` from that monthly payment. This is the monthly instalment used by the solver.
+4. Search for the annual compound rate at which the full loan amount amortises to the reduced instalment. Starting from an initial guess of 0.25 (25 percent), the solver decrements the guess by 0.0001 each pass, converts it to a monthly rate via `(1 + guess) ** (1/12) - 1`, and simulates the full payment schedule from `remaining_balance = loan_amount`. When the residual balance drops to 0.10 or below, the current guess is returned as the effective annual rate.
 5. A hard ceiling of `MAX_ITERATIONS = 1_000_000` guards against non-convergence.
+
+Note that the headline rate uses simple monthly compounding (`headline / 12`) while the solved rate uses compound monthly compounding (`(1 + r) ** (1/12) - 1`), so the two rates are not directly comparable even when the commission is zero.
 
 ```mermaid
 flowchart LR
     A[Inputs] --> B[commission = amount * rate]
-    B --> C[monthly payment on full amount<br/>at headline rate]
+    B --> C[monthly payment on full amount<br/>at headline monthly rate]
     C --> D[reduce payment by commission / months]
     D --> E{simulate schedule<br/>from guess 0.25<br/>step -0.0001}
     E -->|balance > 0.10| E
@@ -110,15 +114,15 @@ flowchart LR
 ## Project layout
 
 ```text
-app.py               Flask app: GET / + POST /calculate + security headers
-cli.py               Standalone prompt-driven script
-templates/index.html Form
-templates/result.html Result page
-static/style.css     Form styles
-tests/conftest.py    Flask app + client fixtures
-tests/test_app.py    App creation, calculation, and validation tests
-pyproject.toml       Project metadata, dependencies, ruff, mypy, pytest config
-uv.lock              Pinned dependency versions
+app.py                 Flask app: GET / + POST /calculate + security headers
+cli.py                 Standalone prompt-driven script
+templates/index.html   Form
+templates/result.html  Result page
+static/style.css       Form styles
+tests/conftest.py      Flask app + client fixtures
+tests/test_app.py      App creation, calculation, and validation tests
+pyproject.toml         Project metadata, dependencies, ruff, mypy, pytest config
+uv.lock                Pinned dependency versions
 ```
 
 Flat layout by design (`[tool.uv] package = false` in `pyproject.toml`); the project is not published as an installable package.
@@ -127,7 +131,7 @@ Flat layout by design (`[tool.uv] package = false` in `pyproject.toml`); the pro
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `FLASK_DEBUG` | Enable Flask debug mode when running `app.py` directly. Any value other than `true` (case-insensitive) leaves debug off. | unset (off) |
+| `FLASK_DEBUG` | Enables Flask debug mode when running `app.py` directly. Any value other than `true` (case-insensitive) leaves debug off. | unset (off) |
 
 ## Development
 
@@ -139,7 +143,7 @@ uv run ruff check .
 uv run pytest
 ```
 
-`pytest` is wired via `pyproject.toml` to run with `--cov` and emit `coverage.xml` (consumed by the SonarCloud workflow).
+`pytest` is wired via `pyproject.toml` to run with `--cov` and emit `coverage.xml` (consumed by the SonarCloud workflow). The test suite covers app creation, security headers, five loan-calculation scenarios, and six input-validation cases.
 
 Pre-commit hooks are configured in [`.pre-commit-config.yaml`](.pre-commit-config.yaml): standard hygiene checks, `ruff` and `ruff-format`, `mypy`, `gitleaks`, `yamllint` on workflow files, and `markdownlint`. Install with:
 
@@ -152,10 +156,12 @@ uv run pre-commit install
 Five GitHub Actions workflows live in `.github/workflows/`:
 
 - `ci.yml`: on push and PR to `master`, installs from the frozen lockfile, byte-compiles `app.py` and `cli.py`, runs `ruff check`, then `pytest`.
-- `codeql.yml`: CodeQL security analysis on push, PR, and a weekly cron.
-- `sonarcloud.yml`: coverage upload to SonarCloud on push to `master` and human-authored PRs (Dependabot PRs are skipped because they cannot see `SONAR_TOKEN`).
-- `deps-refresh.yml`: monthly `uv lock --upgrade`, re-runs the tests, and opens a `deps/monthly-refresh` PR if anything changed.
-- `dependabot-auto-merge.yml`: auto-merges Dependabot patch and minor updates (majors still require manual review).
+- `codeql.yml`: CodeQL security analysis on push, PR, and a weekly cron (Mondays at 06:00 UTC).
+- `sonarcloud.yml`: coverage upload to SonarCloud on push to `main` or `master` and on human-authored PRs (Dependabot PRs are skipped because they cannot see `SONAR_TOKEN`).
+- `deps-refresh.yml`: monthly (day 9 at 04:41 UTC) `uv lock --upgrade`, re-runs the tests, and opens a `deps/monthly-refresh` PR if anything changed.
+- `dependabot-auto-merge.yml`: auto-merges Dependabot patch, minor, and grouped updates. Major version bumps still require manual review.
+
+Dependabot itself is configured in [`.github/dependabot.yml`](.github/dependabot.yml) to watch both `github-actions` and the `uv` ecosystem on a weekly cadence, with minor and patch updates grouped.
 
 ## Security
 
