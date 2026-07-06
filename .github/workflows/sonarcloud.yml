@@ -26,20 +26,17 @@ jobs:
         with:
           fetch-depth: 0  # Full history for SonarCloud blame
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install pytest pytest-cov
+        run: uv sync --frozen
 
       - name: Run tests with coverage
         run: |
-          pytest --cov=. --cov-report=xml --cov-report=term-missing || exit_code=$?
+          uv run pytest || exit_code=$?
           if [ "${exit_code:-0}" -eq 5 ]; then
             echo "No tests collected — skipping"
             exit 0
