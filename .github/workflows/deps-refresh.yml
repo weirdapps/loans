@@ -20,23 +20,17 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           python-version: "3.12"
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
-
       - name: Refresh lockfile
-        run: |
-          uv venv .venv
-          uv pip install --python .venv/bin/python flask pytest pytest-cov ruff
-          uv pip freeze --python .venv/bin/python > requirements-lock.txt
+        run: uv lock --upgrade
 
       - name: Validate (install + tests)
         run: |
-          pip install -r requirements-lock.txt
-          pytest
+          uv sync --frozen
+          uv run pytest
 
       - name: Open PR with refreshed lockfile
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
@@ -47,7 +41,6 @@ jobs:
           commit-message: "deps: monthly lockfile refresh"
           title: "deps: monthly dependency refresh"
           body: |
-            Automated monthly refresh of the committed lockfile to the latest
-            resolver-compatible versions. CI (tests) passed on this branch.
-            Review and merge if green.
+            Automated monthly refresh of uv.lock to the latest resolver-compatible
+            versions. CI (tests) passed on this branch. Review and merge if green.
           labels: dependencies
