@@ -102,7 +102,7 @@ The math is identical in `app.py` and `cli.py`:
 Note that the headline rate uses simple monthly compounding (`headline / 12`) while the solved rate uses compound monthly compounding (`(1 + r) ** (1/12) - 1`), so the two rates are not directly comparable even when the commission is zero.
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[Inputs] --> B[commission = amount * rate]
     B --> C[monthly payment on full amount<br/>at headline monthly rate]
     C --> D[reduce payment by commission / months]
