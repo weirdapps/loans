@@ -11,7 +11,7 @@ dependencies = [
 dev = [
     "pytest>=8",
     "pytest-cov>=5",
-    "ruff>=0.15.21",
+    "ruff>=0.15.22",
 ]
 
 # Flat app (app.py + cli.py at repo root), not an installed package.
