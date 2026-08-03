@@ -18,7 +18,7 @@ The four inputs (loan amount, duration in months, headline annual interest rate,
 - A Flask web UI (`app.py`) with a four-field form.
 - A prompt-based Python script (`cli.py`) with the same math in the terminal.
 
-The headline rate is a nominal simple rate divided by 12 for the monthly period; the reported effective rate is the annual equivalent of a compound monthly rate. With a non-zero commission the reported effective rate is lower than the headline; with a zero commission the two rates match up to the solver's step size.
+The headline rate is a nominal simple rate divided by 12 for the monthly period; the reported effective rate is the annual equivalent of a compound monthly rate. The two sit on different bases, so they are not directly comparable. With a zero commission the reported rate is the compound-annual equivalent of the headline and therefore lands above it: a headline of 8.5 percent reports 8.83 percent. Raising the commission pulls the reported rate down from that baseline, so it drops below the headline only once the commission is large enough.
 
 ## Requirements
 
@@ -56,7 +56,7 @@ Open [http://localhost:5000](http://localhost:5000). The form asks for:
 | Annual Interest Rate (%) | number |
 | Partner's Commission Rate (%) | number |
 
-Submitting posts to `/calculate`, which validates the inputs and re-renders the form on error, or renders `result.html` with the effective rate rounded to two decimals otherwise. Every response carries these headers:
+Submitting posts to `/calculate`, which validates the inputs and re-renders the form on error, or renders `result.html` with the effective rate rounded to two decimals otherwise. Note that `app.py` passes an `error` string to the template but `index.html` has no slot for it, so a rejected submission returns a blank form with no message explaining why. Every response carries these headers:
 
 ```http
 X-Content-Type-Options: nosniff
@@ -87,7 +87,7 @@ Enter the partner's commission rate (in percentage): 2
 Annual Rate (after deducting partner's commission): 8.09%
 ```
 
-On non-convergence the CLI prints an error and exits with status 1; the web UI re-renders the form with an error message.
+On non-convergence the CLI prints an error and exits with status 1; the web UI re-renders the form, again without displaying a reason.
 
 ## How it works
 
@@ -99,7 +99,7 @@ The math is identical in `app.py` and `cli.py`:
 4. Search for the annual compound rate at which the full loan amount amortises to the reduced instalment. Starting from an initial guess of 0.25 (25 percent), the solver decrements the guess by 0.0001 each pass, converts it to a monthly rate via `(1 + guess) ** (1/12) - 1`, and simulates the full payment schedule from `remaining_balance = loan_amount`. When the residual balance drops to 0.10 or below, the current guess is returned as the effective annual rate.
 5. A hard ceiling of `MAX_ITERATIONS = 1_000_000` guards against non-convergence.
 
-Note that the headline rate uses simple monthly compounding (`headline / 12`) while the solved rate uses compound monthly compounding (`(1 + r) ** (1/12) - 1`), so the two rates are not directly comparable even when the commission is zero.
+Note that the headline rate uses simple monthly compounding (`headline / 12`) while the solved rate uses compound monthly compounding (`(1 + r) ** (1/12) - 1`), so the two rates are not directly comparable even when the commission is zero. At a headline of 8.5 percent over 60 months the reported rate runs 8.83, 8.65, 8.46, 8.09 and 7.71 percent for commissions of 0, 0.5, 1, 2 and 3 percent. The result does not depend on the loan amount, because the commission is proportional to it.
 
 ```mermaid
 flowchart TD
@@ -145,10 +145,10 @@ uv run pytest
 
 `pytest` is wired via `pyproject.toml` to run with `--cov` and emit `coverage.xml` (consumed by the SonarCloud workflow). The test suite covers app creation, security headers, five loan-calculation scenarios, and six input-validation cases.
 
-Pre-commit hooks are configured in [`.pre-commit-config.yaml`](.pre-commit-config.yaml): standard hygiene checks, `ruff` and `ruff-format`, `mypy`, `gitleaks`, `yamllint` on workflow files, and `markdownlint`. Install with:
+Pre-commit hooks are configured in [`.pre-commit-config.yaml`](.pre-commit-config.yaml): standard hygiene checks, `ruff` and `ruff-format`, `mypy`, `gitleaks`, `yamllint` on workflow files, and `markdownlint`. `pre-commit` is deliberately not in the dev dependency group, so run it as a standalone tool rather than through `uv run`:
 
 ```bash
-uv run pre-commit install
+uvx pre-commit install
 ```
 
 ## CI
@@ -159,7 +159,7 @@ Five GitHub Actions workflows live in `.github/workflows/`:
 - `codeql.yml`: CodeQL security analysis on push, PR, and a weekly cron (Mondays at 06:00 UTC).
 - `sonarcloud.yml`: coverage upload to SonarCloud on push to `main` or `master` and on human-authored PRs (Dependabot PRs are skipped because they cannot see `SONAR_TOKEN`).
 - `deps-refresh.yml`: monthly (day 9 at 04:41 UTC) `uv lock --upgrade`, re-runs the tests, and opens a `deps/monthly-refresh` PR if anything changed.
-- `dependabot-auto-merge.yml`: auto-merges Dependabot patch, minor, and grouped updates. Major version bumps still require manual review.
+- `dependabot-auto-merge.yml`: a thin caller of the shared reusable workflow at `weirdapps/shared-workflows/.github/workflows/dependabot-auto-merge.yml@main`. It auto-merges Dependabot patch, minor, and grouped updates; standalone major bumps stay open for manual review. The merge logic lives in the shared repo, so behaviour changes belong there, not here.
 
 Dependabot itself is configured in [`.github/dependabot.yml`](.github/dependabot.yml) to watch both `github-actions` and the `uv` ecosystem on a weekly cadence, with minor and patch updates grouped.
 
