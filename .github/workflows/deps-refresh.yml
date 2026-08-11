@@ -29,13 +29,15 @@ jobs:
         run: uv lock --upgrade
 
       # Same gate ci.yml applies, so a refresh that would go red never becomes
-      # a PR in the first place.
+      # a PR in the first place. `--locked` refuses to silently re-resolve on
+      # top of the lockfile we just wrote, `--no-build` refuses to build (and
+      # therefore execute the setup scripts of) a source distribution.
       - name: Validate (install + syntax + lint + tests)
         run: |
           uv sync --frozen
-          uv run python -m py_compile app.py cli.py
-          uv run ruff check .
-          uv run pytest
+          uv run --locked --no-build python -m py_compile app.py cli.py
+          uv run --locked --no-build ruff check .
+          uv run --locked --no-build pytest
 
       - name: Open PR with refreshed lockfile
         id: cpr
