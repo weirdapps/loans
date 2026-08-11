@@ -6,6 +6,12 @@ on:
     branches: [master]
   schedule:
     - cron: '0 6 * * 1'
+  # An Actions run can wedge: on 2026-08-11 run 31504708817 stayed
+  # `in_progress` for over 30 minutes with its `analyze` job already green,
+  # and both cancel and force-cancel returned HTTP 500. Rerunning is refused
+  # while a run is live, so without this trigger the only way to get a fresh
+  # CodeQL result on master is another commit.
+  workflow_dispatch: {}
 jobs:
   analyze:
     runs-on: ubuntu-latest

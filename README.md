@@ -156,7 +156,7 @@ uvx pre-commit install
 Five GitHub Actions workflows live in `.github/workflows/`:
 
 - `ci.yml`: on push and PR to `master`, installs from the frozen lockfile, byte-compiles `app.py` and `cli.py`, runs `ruff check`, then `pytest`. Also manually dispatchable against any branch; a dispatched run additionally mirrors its result into a `CI (dispatched)` commit status, because a dispatched run's check run does not join a pull request's status rollup.
-- `codeql.yml`: CodeQL security analysis on push, PR, and a weekly cron (Mondays at 06:00 UTC).
+- `codeql.yml`: CodeQL security analysis on push, PR, a weekly cron (Mondays at 06:00 UTC), and manual dispatch.
 - `sonarcloud.yml`: coverage upload to SonarCloud on push to `main` or `master` and on human-authored PRs (Dependabot PRs are skipped because they cannot see `SONAR_TOKEN`).
 - `deps-refresh.yml`: monthly (day 9 at 04:41 UTC) `uv lock --upgrade`, re-runs the full CI gate (syntax, lint, tests), and opens a `deps/monthly-refresh` PR if anything changed. It then dispatches `ci.yml` against that branch, because GitHub refuses to start `pull_request` runs for a PR opened with `GITHUB_TOKEN` and the PR would otherwise carry no checks at all. The dispatched run reports back as the `CI (dispatched)` commit status.
 - `dependabot-auto-merge.yml`: a thin caller of the shared reusable workflow at `weirdapps/shared-workflows/.github/workflows/dependabot-auto-merge.yml@main`. It auto-merges Dependabot patch, minor, and grouped updates; standalone major bumps stay open for manual review. The merge logic lives in the shared repo, so behaviour changes belong there, not here.
