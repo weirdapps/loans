@@ -5,6 +5,11 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  # Manual/API dispatch. GitHub refuses to start `pull_request` runs for a PR
+  # opened with GITHUB_TOKEN, and `workflow_dispatch` is the one documented
+  # exception, so deps-refresh.yml uses it to put a real CI check on the
+  # lockfile-refresh PR. See the comment in that workflow.
+  workflow_dispatch: {}
 
 permissions:
   contents: read

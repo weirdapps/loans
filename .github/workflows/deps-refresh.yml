@@ -6,6 +6,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
+  actions: write # dispatch CI onto the refresh branch (see below)
   contents: write
   pull-requests: write
 
@@ -27,12 +28,19 @@ jobs:
       - name: Refresh lockfile
         run: uv lock --upgrade
 
-      - name: Validate (install + tests)
+      # Same gate ci.yml applies, so a refresh that would go red never becomes
+      # a PR in the first place. `--locked` refuses to silently re-resolve on
+      # top of the lockfile we just wrote, `--no-build` refuses to build (and
+      # therefore execute the setup scripts of) a source distribution.
+      - name: Validate (install + syntax + lint + tests)
         run: |
           uv sync --frozen
-          uv run pytest
+          uv run --locked --no-build python -m py_compile app.py cli.py
+          uv run --locked --no-build ruff check .
+          uv run --locked --no-build pytest
 
       - name: Open PR with refreshed lockfile
+        id: cpr
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.PUSH_PAT || github.token }}
@@ -42,5 +50,24 @@ jobs:
           title: "deps: monthly dependency refresh"
           body: |
             Automated monthly refresh of uv.lock to the latest resolver-compatible
-            versions. CI (tests) passed on this branch. Review and merge if green.
+            versions. The full CI gate (syntax, lint, tests) passed on this branch
+            before the PR was opened, and CI is dispatched against it separately.
+            Review and merge if green.
           labels: dependencies
+
+      # Without PUSH_PAT the PR above is authored by GITHUB_TOKEN, and GitHub
+      # will not start `pull_request` runs for it: every check suite lands on
+      # `action_required` with zero jobs, so the PR shows no checks at all and
+      # nothing can gate the merge. `workflow_dispatch` is the documented
+      # exception to that rule, so dispatch CI explicitly. The run targets the
+      # branch head, which is the PR head, so its check runs attach to the PR.
+      # Once PUSH_PAT is set this step is harmless but redundant.
+      - name: Dispatch CI onto the refresh branch
+        if: steps.cpr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ steps.cpr.outputs.pull-request-head-sha }}
+        run: |
+          set -euo pipefail
+          gh workflow run ci.yml --ref deps/monthly-refresh
+          echo "Dispatched CI on deps/monthly-refresh @ $HEAD_SHA"

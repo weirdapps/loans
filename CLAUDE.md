@@ -60,9 +60,11 @@ Flat layout, not an installed package (`[tool.uv] package = false` in `pyproject
 
 Five workflows under `.github/workflows/`:
 
-- **ci.yml**: push/PR to `master`. `uv sync --frozen`, `py_compile app.py cli.py`, `ruff check`, `pytest`. Python 3.12.
+- **ci.yml**: push/PR to `master`, plus `workflow_dispatch`. `uv sync --frozen`, `py_compile app.py cli.py`, `ruff check`, `pytest`. Python 3.12.
 - **sonarcloud.yml**: push to `main`/`master` and human-authored PRs (skips Dependabot). `uv sync --frozen`, `pytest` with coverage, SonarCloud scan. Python 3.11.
-- **deps-refresh.yml**: monthly cron `41 4 9 * *` (day 9 at 04:41 UTC) + manual dispatch. `uv lock --upgrade`, `uv sync --frozen`, `pytest`, opens PR `deps/monthly-refresh`.
+- **deps-refresh.yml**: monthly cron `41 4 9 * *` (day 9 at 04:41 UTC) + manual dispatch. `uv lock --upgrade`, then the full CI gate (`uv sync --frozen`, `py_compile`, `ruff check`, `pytest`), then opens PR `deps/monthly-refresh`, then dispatches `ci.yml` on that branch.
+
+  The dispatch is not optional plumbing. `PUSH_PAT` is not set on this repo, so the PR is opened by `GITHUB_TOKEN`, and GitHub will not start `pull_request` runs for such a PR: all four check suites land on `action_required` with zero jobs and the PR shows no checks at all (this is what happened to PR #59). `workflow_dispatch` is the one documented exception to that rule, so the workflow dispatches `ci.yml` against the refresh branch; the run's check runs attach to the branch head, which is the PR head, so they appear on the PR. Setting a `PUSH_PAT` secret would fix the root cause and make the dispatch redundant but harmless.
 - **codeql.yml**: CodeQL security analysis.
 - **dependabot-auto-merge.yml**: thin caller of `weirdapps/shared-workflows/.github/workflows/dependabot-auto-merge.yml@main` (passes no inputs, so the reusable's defaults apply). Auto-merges patch, minor, and grouped updates; standalone majors stay open. Change the merge logic in `shared-workflows`, not here.
 
