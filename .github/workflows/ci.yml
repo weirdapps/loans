@@ -11,12 +11,13 @@ on:
   # lockfile-refresh PR. See the comment in that workflow.
   workflow_dispatch: {}
 
-permissions:
-  contents: read
-
 jobs:
+  # Permissions are declared per job, not workflow-wide: the two jobs need
+  # disjoint scopes and neither should hold the other's.
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
@@ -34,3 +35,38 @@ jobs:
 
       - name: Test
         run: uv run pytest
+
+  # A workflow_dispatch run's check run does not join a pull request's status
+  # rollup: GitHub only rolls up the check suites it created from the push or
+  # pull_request event. The `check` job above therefore lands on the refresh
+  # PR's head commit and is invisible to `gh pr checks`, which is exactly the
+  # gap dispatching CI was meant to close. A commit status DOES roll up, so
+  # mirror this run's real result into one. The state is taken verbatim from
+  # the job result, so a red CI reports a red status.
+  report:
+    if: always() && github.event_name == 'workflow_dispatch'
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Mirror the CI result into a commit status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RESULT: ${{ needs.check.result }}
+          RUN_URL: >-
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if [ "$RESULT" = "success" ]; then
+            state=success
+          else
+            state=failure
+          fi
+          gh api -X POST "repos/$REPO/statuses/$SHA" \
+            -f state="$state" \
+            -f context="CI (dispatched)" \
+            -f description="ci.yml job 'check' finished: $RESULT" \
+            -f target_url="$RUN_URL"
