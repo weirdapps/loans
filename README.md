@@ -165,7 +165,7 @@ Dependabot itself is configured in [`.github/dependabot.yml`](.github/dependabot
 
 ## Security
 
-Vulnerability reports go to <plessas@nbg.gr>. Full policy in [`SECURITY.md`](SECURITY.md).
+Vulnerability reports go through this repository's **Security** tab (**Report a vulnerability**). Full policy in [`SECURITY.md`](SECURITY.md).
 
 ## License
 
