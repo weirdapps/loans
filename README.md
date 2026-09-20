@@ -32,7 +32,10 @@ The single runtime dependency is Flask 3.1 or newer, declared in [`pyproject.tom
 Clone and install with uv (recommended, uses the frozen lockfile):
 
 ```bash
+# HTTPS (no SSH key required):
 git clone https://github.com/weirdapps/loans.git
+# or, with SSH:
+git clone git@github.com:weirdapps/loans.git
 cd loans
 uv sync --frozen
 ```
