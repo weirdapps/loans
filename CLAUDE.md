@@ -58,7 +58,7 @@ Flat layout, not an installed package (`[tool.uv] package = false` in `pyproject
 
 ## CI
 
-Five workflows under `.github/workflows/`:
+Six workflows under `.github/workflows/`:
 
 - **ci.yml**: push/PR to `master`, plus `workflow_dispatch`. `uv sync --frozen`, `py_compile app.py cli.py`, `ruff check`, `pytest`. Python 3.12. On a `workflow_dispatch` run only, a second `report` job mirrors the `check` job's result into a `CI (dispatched)` commit status, verbatim. That mirror is load-bearing: a dispatched run's check run does NOT join a pull request's status rollup (GitHub only rolls up suites it created from the push or `pull_request` event), so without the status `gh pr checks` on the refresh PR still shows nothing.
 - **sonarcloud.yml**: push to `main`/`master` and human-authored PRs (skips Dependabot). `uv sync --frozen`, `pytest` with coverage, SonarCloud scan. Python 3.11.
@@ -67,5 +67,6 @@ Five workflows under `.github/workflows/`:
   The dispatch is not optional plumbing. `PUSH_PAT` is not set on this repo, so the PR is opened by `GITHUB_TOKEN`, and GitHub will not start `pull_request` runs for such a PR: all four check suites land on `action_required` with zero jobs and the PR shows no checks at all (this is what happened to PR #59). `workflow_dispatch` is the one documented exception to that rule, so the workflow dispatches `ci.yml` against the refresh branch, and `ci.yml`'s `report` job turns that run's result into a commit status the PR can actually see. Setting a `PUSH_PAT` secret would fix the root cause and make both halves redundant but harmless.
 - **codeql.yml**: CodeQL security analysis on push/PR to `master`, a Monday 06:00 UTC cron, and `workflow_dispatch`. The manual trigger exists because a wedged run cannot be cleared: on 2026-08-11 run `31504708817` sat `in_progress` for over 30 minutes with its `analyze` job already green, `cancel` and `force-cancel` both returned HTTP 500, and rerun is refused while a run is live.
 - **dependabot-auto-merge.yml**: thin caller of `weirdapps/shared-workflows/.github/workflows/dependabot-auto-merge.yml@main` (passes no inputs, so the reusable's defaults apply). Auto-merges patch, minor, and grouped updates; standalone majors stay open. Change the merge logic in `shared-workflows`, not here.
+- **gitleaks.yml**: secret scan on push to `master`, every PR, and a weekly cron.
 
 Dependabot (`.github/dependabot.yml`) watches both `github-actions` and the `uv` ecosystem weekly, with minor and patch updates grouped.
